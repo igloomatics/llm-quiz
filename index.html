@@ -1,0 +1,2385 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transformer 深度学习 - 互动答题平台</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" />
+    <script src="questions.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: #f5f7fa;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 8px;
+            color: #2c3e50;
+            font-weight: 600;
+        }
+
+        .header p {
+            font-size: 1em;
+            color: #7f8c8d;
+        }
+
+        .stats {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #e1e8ed;
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: 600;
+            color: #3498db;
+        }
+
+        .stat-label {
+            color: #95a5a6;
+            margin-top: 5px;
+            font-size: 0.9em;
+        }
+
+        .controls {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #e1e8ed;
+        }
+
+        .filter-group {
+            margin-bottom: 15px;
+        }
+
+        .filter-label {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .category-label {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-right: 12px;
+            font-size: 0.95em;
+            display: inline-block;
+            min-width: 80px;
+        }
+
+        .topic-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 8px 18px;
+            border: 1px solid #ddd;
+            background: white;
+            color: #555;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        .btn:hover {
+            background: #f8f9fa;
+            border-color: #3498db;
+            color: #3498db;
+        }
+
+        .btn.active {
+            background: #3498db;
+            color: white;
+            border-color: #3498db;
+        }
+
+        .btn.submit {
+            background: #3498db;
+            color: white;
+            border: none;
+            font-size: 1em;
+            padding: 10px 24px;
+        }
+
+        .btn.submit:hover {
+            background: #2980b9;
+        }
+
+        .btn.submit:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+
+        .btn.next {
+            background: #27ae60;
+            color: white;
+            border: none;
+        }
+
+        .btn.next:hover {
+            background: #229954;
+        }
+
+        /* 错题复习按钮样式 - 右上角固定位置 */
+        .wrong-answers-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 0.95em;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+            z-index: 1000;
+        }
+
+        .wrong-answers-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(231, 76, 60, 0.4);
+            background: linear-gradient(135deg, #c0392b 0%, #a93226 100%);
+        }
+
+        .wrong-answers-btn:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            opacity: 0.6;
+        }
+
+        .wrong-answers-btn .count-badge {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.3);
+            padding: 3px 10px;
+            border-radius: 12px;
+            margin-left: 8px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+
+        .wrong-answers-btn.active {
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+            box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
+        }
+
+        .wrong-answers-btn.active:hover {
+            background: linear-gradient(135deg, #229954 0%, #1e8449 100%);
+            box-shadow: 0 6px 16px rgba(39, 174, 96, 0.4);
+        }
+
+        .question-card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            border: 1px solid #e1e8ed;
+        }
+
+        .question-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .question-number {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #3498db;
+        }
+
+        .badges {
+            display: flex;
+            gap: 10px;
+        }
+
+        .badge {
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: 500;
+        }
+
+        .badge.difficulty-入门 {
+            background: #d5f4e6;
+            color: #27ae60;
+        }
+
+        .badge.difficulty-进阶 {
+            background: #ffeaa7;
+            color: #f39c12;
+        }
+
+        .badge.difficulty-挑战 {
+            background: #fadbd8;
+            color: #e74c3c;
+        }
+
+        .badge.topic {
+            background: #dfe6e9;
+            color: #2d3436;
+        }
+
+        .question-content {
+            font-size: 1.1em;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .option {
+            padding: 15px;
+            border: 1px solid #e1e8ed;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: white;
+        }
+
+        .option:hover {
+            border-color: #3498db;
+            background: #f8f9fa;
+        }
+
+        .option.selected {
+            border-color: #3498db;
+            background: #ebf5fb;
+        }
+
+        .option.correct {
+            border-color: #27ae60;
+            background: #d5f4e6;
+        }
+
+        .option.incorrect {
+            border-color: #e74c3c;
+            background: #fadbd8;
+        }
+
+        .code-block {
+            background: #282c34;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+            overflow-x: auto;
+            position: relative;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            border: 1px solid #3e4451;
+        }
+
+        .code-block code {
+            color: #abb2bf;
+            font-size: 0.95em;
+            line-height: 1.6;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        }
+
+        .code-block pre {
+            margin: 0;
+            white-space: pre;
+            word-wrap: normal;
+        }
+
+        /* Prism.js Atom One Dark主题配色 */
+        .code-block .token.comment,
+        .code-block .token.prolog,
+        .code-block .token.doctype,
+        .code-block .token.cdata {
+            color: #5c6370;
+            font-style: italic;
+        }
+
+        .code-block .token.punctuation {
+            color: #abb2bf;
+        }
+
+        .code-block .token.property,
+        .code-block .token.tag,
+        .code-block .token.boolean,
+        .code-block .token.number,
+        .code-block .token.constant,
+        .code-block .token.symbol,
+        .code-block .token.deleted {
+            color: #d19a66;
+        }
+
+        .code-block .token.selector,
+        .code-block .token.attr-name,
+        .code-block .token.string,
+        .code-block .token.char,
+        .code-block .token.builtin,
+        .code-block .token.inserted {
+            color: #98c379;
+        }
+
+        .code-block .token.operator,
+        .code-block .token.entity,
+        .code-block .token.url,
+        .code-block .language-css .token.string,
+        .code-block .style .token.string {
+            color: #56b6c2;
+        }
+
+        .code-block .token.atrule,
+        .code-block .token.attr-value,
+        .code-block .token.keyword {
+            color: #c678dd;
+            font-weight: 600;
+        }
+
+        .code-block .token.function,
+        .code-block .token.class-name {
+            color: #61afef;
+        }
+
+        .code-block .token.regex,
+        .code-block .token.important,
+        .code-block .token.variable {
+            color: #e06c75;
+        }
+
+        .code-block .token.important,
+        .code-block .token.bold {
+            font-weight: bold;
+        }
+
+        .code-block .token.italic {
+            font-style: italic;
+        }
+
+        .code-blank {
+            display: inline-block;
+            min-width: 120px;
+            padding: 2px 8px;
+            background: #21252b;
+            border: 2px dashed #61afef;
+            border-radius: 4px;
+            color: #abb2bf;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.95em;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .code-blank:focus {
+            background: #2c313a;
+            border-style: solid;
+            border-color: #61afef;
+        }
+
+        .code-blank.correct {
+            background: #1a3a2e;
+            border-color: #98c379;
+            border-style: solid;
+            color: #98c379;
+        }
+
+        .code-blank.incorrect {
+            background: #3a1a1a;
+            border-color: #e06c75;
+            border-style: solid;
+            color: #e06c75;
+        }
+
+        .code-blank:disabled {
+            cursor: not-allowed;
+            opacity: 0.9;
+        }
+
+        .code-blank::placeholder {
+            color: #5c6370;
+        }
+
+        /* 多行代码输入框样式 */
+        .code-textarea-container {
+            margin: 16px 0;
+        }
+
+        .code-textarea-label {
+            display: block;
+            font-weight: 600;
+            color: #abb2bf;
+            margin-bottom: 8px;
+            font-size: 0.95em;
+        }
+
+        .code-textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 12px;
+            background: #21252b;
+            border: 2px dashed #61afef;
+            border-radius: 6px;
+            color: #abb2bf;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.9em;
+            line-height: 1.6;
+            resize: vertical;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .code-textarea:focus {
+            background: #2c313a;
+            border-style: solid;
+            border-color: #61afef;
+        }
+
+        .code-textarea.correct {
+            background: #1a3a2e;
+            border-color: #98c379;
+            border-style: solid;
+            color: #98c379;
+        }
+
+        .code-textarea.incorrect {
+            background: #3a1a1a;
+            border-color: #e06c75;
+            border-style: solid;
+            color: #e06c75;
+        }
+
+        .code-textarea:disabled {
+            cursor: not-allowed;
+            opacity: 0.9;
+        }
+
+        .code-textarea::placeholder {
+            color: #5c6370;
+        }
+
+        /* 统一代码编辑器样式 - 用于代码默写 */
+        .unified-code-editor {
+            background: #282c34;
+            border-radius: 8px;
+            padding: 0;
+            margin: 16px 0;
+            overflow: hidden;
+            border: 1px solid #3e4451;
+        }
+
+        .unified-code-editor pre {
+            margin: 0;
+            padding: 16px;
+            overflow-x: auto;
+        }
+
+        .unified-code-editor code {
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.9em;
+            line-height: 1.6;
+            color: #abb2bf;
+        }
+
+        .inline-code-input {
+            background: #21252b;
+            border: 2px solid #61afef;
+            border-radius: 4px;
+            color: #61afef;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.9em;
+            line-height: 1.6;
+            padding: 4px 8px;
+            outline: none;
+            resize: vertical;
+            width: 100%;
+            margin: 4px 0;
+            min-height: 100px;
+            transition: all 0.2s;
+            display: block;
+        }
+
+        .inline-code-input:focus {
+            background: #2c313a;
+            border-color: #61afef;
+            box-shadow: 0 0 0 3px rgba(97, 175, 239, 0.1);
+        }
+
+        .inline-code-input.correct {
+            background: #1a3a2e;
+            border-color: #98c379;
+            color: #98c379;
+        }
+
+        .inline-code-input.incorrect {
+            background: #3a1a1a;
+            border-color: #e06c75;
+            color: #e06c75;
+        }
+
+        .inline-code-input:disabled {
+            cursor: not-allowed;
+            opacity: 0.9;
+        }
+
+        .inline-code-input::placeholder {
+            color: #5c6370;
+            font-style: italic;
+        }
+
+        .code-hint {
+            display: inline-block;
+            color: #5c6370;
+            font-style: italic;
+            font-size: 0.85em;
+            margin-left: 8px;
+        }
+
+        .feedback {
+            margin-top: 20px;
+            padding: 16px;
+            border-radius: 8px;
+            animation: slideIn 0.3s ease-out;
+            border-left: 4px solid;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .feedback.correct {
+            background: #d5f4e6;
+            border-left-color: #27ae60;
+        }
+
+        .feedback.incorrect {
+            background: #fadbd8;
+            border-left-color: #e74c3c;
+        }
+
+        .feedback-title {
+            font-weight: 600;
+            font-size: 1em;
+            margin-bottom: 8px;
+        }
+
+        .feedback.correct .feedback-title {
+            color: #27ae60;
+        }
+
+        .feedback.incorrect .feedback-title {
+            color: #e74c3c;
+        }
+
+        .explanation {
+            line-height: 1.8;
+            color: #2c3e50;
+            font-size: 0.95em;
+        }
+
+        .explanation strong {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .explanation h1,
+        .explanation h2,
+        .explanation h3,
+        .explanation h4 {
+            margin-top: 1.2em;
+            margin-bottom: 0.6em;
+            color: #2c3e50;
+            font-weight: 600;
+        }
+
+        .explanation h1 {
+            font-size: 1.4em;
+        }
+
+        .explanation h2 {
+            font-size: 1.25em;
+        }
+
+        .explanation h3 {
+            font-size: 1.1em;
+        }
+
+        .explanation p {
+            margin-bottom: 0.8em;
+        }
+
+        .explanation ul,
+        .explanation ol {
+            margin-left: 1.5em;
+            margin-bottom: 0.8em;
+        }
+
+        .explanation li {
+            margin-bottom: 0.4em;
+        }
+
+        .explanation code {
+            background: #f5f7fa;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #e74c3c;
+        }
+
+        .explanation pre {
+            background: #282c34;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 1em 0;
+        }
+
+        .explanation pre code {
+            background: none;
+            padding: 0;
+            color: #abb2bf;
+            font-size: 0.9em;
+        }
+
+        .explanation blockquote {
+            border-left: 4px solid #3498db;
+            padding-left: 1em;
+            margin: 1em 0;
+            color: #555;
+            font-style: italic;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .no-questions {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+            font-size: 1.2em;
+        }
+
+        .progress-bar {
+            height: 4px;
+            background: #e1e8ed;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #3498db;
+            transition: width 0.3s ease;
+        }
+
+        .resource-button {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: #3498db;
+            color: white;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+            font-size: 1.5em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            z-index: 1000;
+        }
+
+        .resource-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 16px rgba(52, 152, 219, 0.4);
+        }
+
+        .image-button {
+            position: fixed;
+            bottom: 100px;
+            right: 30px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: #2980b9;
+            color: white;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(41, 128, 185, 0.3);
+            font-size: 1.5em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            z-index: 1000;
+        }
+
+        .image-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 16px rgba(41, 128, 185, 0.4);
+        }
+
+        .image-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            animation: fadeIn 0.2s ease-out;
+            padding: 20px;
+        }
+
+        .image-modal-content {
+            max-width: 90%;
+            max-height: 90vh;
+            position: relative;
+            animation: zoomIn 0.3s ease-out;
+        }
+
+        @keyframes zoomIn {
+            from {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .image-modal-content img {
+            max-width: 100%;
+            max-height: 90vh;
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .close-image-modal {
+            position: absolute;
+            top: -40px;
+            right: 0;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: white;
+            border: none;
+            cursor: pointer;
+            font-size: 1.4em;
+            color: #333;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .close-image-modal:hover {
+            background: #f0f0f0;
+            transform: rotate(90deg);
+        }
+
+        .image-title {
+            position: absolute;
+            bottom: -45px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            color: white;
+            font-size: 1.1em;
+            font-weight: 600;
+        }
+
+        .resource-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        .resource-content {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+            animation: slideUp 0.3s ease-out;
+            border: 1px solid #e1e8ed;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(30px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .resource-content h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.6em;
+            font-weight: 600;
+        }
+
+        .resource-section {
+            margin-bottom: 25px;
+        }
+
+        .resource-section h3 {
+            color: #34495e;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+            border-left: 4px solid #3498db;
+            padding-left: 10px;
+            font-weight: 600;
+        }
+
+        .resource-link {
+            display: block;
+            padding: 12px 15px;
+            margin: 8px 0;
+            background: #f8f9fa;
+            border-radius: 6px;
+            color: #3498db;
+            text-decoration: none;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .resource-link:hover {
+            background: #e8f4f8;
+            border-color: #3498db;
+            transform: translateX(4px);
+        }
+
+        .resource-link-title {
+            font-weight: 600;
+            display: block;
+            margin-bottom: 3px;
+            color: #2c3e50;
+        }
+
+        .resource-link-desc {
+            font-size: 0.85em;
+            color: #7f8c8d;
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #ecf0f1;
+            border: none;
+            cursor: pointer;
+            font-size: 1.3em;
+            color: #7f8c8d;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .close-modal:hover {
+            background: #bdc3c7;
+            color: #2c3e50;
+        }
+
+        /* 专题介绍页面样式 */
+        .topic-intro {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            margin-bottom: 20px;
+            border: 1px solid #e1e8ed;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .topic-intro-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .topic-intro-title {
+            font-size: 2em;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .topic-intro-subtitle {
+            color: #7f8c8d;
+            font-size: 1.1em;
+        }
+
+        .topic-intro-content {
+            margin-bottom: 30px;
+            line-height: 1.8;
+            color: #34495e;
+            font-size: 1.05em;
+        }
+
+        .topic-intro-content p {
+            margin-bottom: 15px;
+        }
+
+        .topic-intro-content ul {
+            margin: 15px 0;
+            padding-left: 25px;
+        }
+
+        .topic-intro-content li {
+            margin-bottom: 8px;
+        }
+
+        .topic-intro-image {
+            text-align: center;
+            margin: 30px 0;
+        }
+
+        .topic-intro-image img {
+            max-width: 100%;
+            max-height: 500px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .topic-intro-actions {
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .start-quiz-btn {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.1em;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+        }
+
+        .start-quiz-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(52, 152, 219, 0.4);
+            background: linear-gradient(135deg, #2980b9 0%, #21618c 100%);
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.6em;
+            }
+            
+            .question-card {
+                padding: 20px;
+            }
+
+            .image-button {
+                width: 50px;
+                height: 50px;
+                bottom: 85px;
+                right: 20px;
+                font-size: 1.2em;
+            }
+
+            .resource-button {
+                width: 50px;
+                height: 50px;
+                bottom: 20px;
+                right: 20px;
+                font-size: 1.2em;
+            }
+
+            .resource-content {
+                padding: 30px 20px;
+            }
+
+            .image-modal-content {
+                max-width: 95%;
+            }
+
+            .close-image-modal {
+                top: -35px;
+                width: 32px;
+                height: 32px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // 使用所有题目数据
+        const allQuestions = questionsData;
+
+        // 资源链接数据
+        const resources = {
+            papers: [
+                {
+                    title: "Attention Is All You Need (原始论文)",
+                    url: "https://arxiv.org/abs/1706.03762",
+                    desc: "Transformer的开山之作，2017年Google Brain发表"
+                },
+                {
+                    title: "BERT: Pre-training of Deep Bidirectional Transformers",
+                    url: "https://arxiv.org/abs/1810.04805",
+                    desc: "Google提出的双向Transformer预训练模型"
+                },
+                {
+                    title: "Language Models are Few-Shot Learners (GPT-3)",
+                    url: "https://arxiv.org/abs/2005.14165",
+                    desc: "OpenAI的GPT-3论文，展示大规模语言模型的能力"
+                },
+                {
+                    title: "FlashAttention: Fast and Memory-Efficient Exact Attention",
+                    url: "https://arxiv.org/abs/2205.14135",
+                    desc: "高效的Attention实现，大幅降低内存占用"
+                }
+            ],
+            repos: [
+                {
+                    title: "The Annotated Transformer",
+                    url: "https://nlp.seas.harvard.edu/2018/04/03/attention.html",
+                    desc: "哈佛NLP团队的带注释Transformer实现，非常适合学习"
+                },
+                {
+                    title: "Hugging Face Transformers",
+                    url: "https://github.com/huggingface/transformers",
+                    desc: "最流行的Transformer模型库，包含各种预训练模型"
+                },
+                {
+                    title: "PyTorch官方Transformer教程",
+                    url: "https://pytorch.org/tutorials/beginner/transformer_tutorial.html",
+                    desc: "PyTorch官方的Transformer实现教程"
+                },
+                {
+                    title: "nanoGPT",
+                    url: "https://github.com/karpathy/nanoGPT",
+                    desc: "Andrej Karpathy的简化版GPT实现，代码清晰易懂"
+                }
+            ],
+            tutorials: [
+                {
+                    title: "The Illustrated Transformer",
+                    url: "http://jalammar.github.io/illustrated-transformer/",
+                    desc: "Jay Alammar的图解Transformer，可视化讲解非常清晰"
+                },
+                {
+                    title: "Transformer模型详解 (李宏毅)",
+                    url: "https://www.youtube.com/watch?v=ugWDIIOHtPA",
+                    desc: "台大李宏毅教授的Transformer讲解视频"
+                },
+                {
+                    title: "Stanford CS224N",
+                    url: "http://web.stanford.edu/class/cs224n/",
+                    desc: "斯坦福自然语言处理课程，深入讲解Transformer"
+                }
+            ]
+        };
+
+        // 专题介绍数据
+        const topicIntros = {
+            'Transformer入门': {
+                title: 'Transformer',
+                subtitle: 'Attention Is All You Need',
+                description: `Transformer是由Google在2017年提出的革命性模型架构，完全基于注意力机制，抛弃了传统的RNN和CNN结构。
+
+**核心创新：**
+- **Self-Attention机制**：允许模型关注输入序列的不同位置，并行计算所有位置之间的关系
+- **位置编码**：使用正弦和余弦函数编码位置信息，让模型理解序列顺序
+- **多头注意力**：从多个角度捕捉不同的语义关系
+- **残差连接和层归一化**：稳定训练过程，支持更深的网络
+
+**架构特点：**
+- Encoder-Decoder结构
+- 每层包含多头自注意力和前馈神经网络
+- 完全可并行化，训练效率高
+
+Transformer开启了NLP领域的新时代，成为BERT、GPT等现代大语言模型的基础架构。`,
+                image: 'Transformer.png'
+            },
+            'Transformer进阶': {
+                title: 'Transformer进阶',
+                subtitle: '深入理解Transformer机制',
+                description: `本专题深入探讨Transformer的核心机制和变体，帮助你全面掌握这一强大架构。
+
+**学习重点：**
+- **注意力机制的数学原理**：Query、Key、Value的计算过程
+- **位置编码的设计思想**：为什么使用正弦函数？
+- **多头注意力的作用**：如何捕捉多种语义关系
+- **Transformer的变体**：各种优化和改进版本
+
+**进阶话题：**
+- 计算复杂度分析：O(n²)的瓶颈
+- 长序列处理：Sparse Attention、Linformer等改进
+- 模型并行与高效训练策略`,
+                image: 'Transformer.png'
+            },
+            '手撕Transformer': {
+                title: '手撕Transformer',
+                subtitle: '从零实现完整的Transformer',
+                description: `通过代码实践深入理解Transformer的每个组件，从零开始构建一个完整的Transformer模型。
+
+**实现内容：**
+- **位置编码**：实现正弦余弦位置编码
+- **多头注意力**：从头实现scaled dot-product attention
+- **前馈网络**：Position-wise FFN的实现
+- **Encoder和Decoder层**：组装完整模块
+- **完整模型**：端到端的Transformer实现
+
+**学习收获：**
+- 深入理解每个组件的工作原理
+- 掌握PyTorch实现技巧
+- 理解模型训练的细节`,
+                image: 'Transformer.png'
+            },
+            '进阶默写挑战': {
+                title: '进阶默写挑战',
+                subtitle: '挑战你的代码记忆力',
+                description: `通过代码默写巩固Transformer实现细节，挑战更复杂的代码片段。
+
+**挑战内容：**
+- 完整的Self-Attention实现
+- 多头注意力的矩阵运算
+- Encoder Layer的完整代码
+- 位置编码的生成逻辑
+
+**提升技能：**
+- 强化代码记忆和理解
+- 提高面试代码能力
+- 深度掌握实现细节`,
+                image: 'Transformer.png'
+            },
+            'BERT': {
+                title: 'BERT',
+                subtitle: 'Bidirectional Encoder Representations from Transformers',
+                description: `BERT是Google在2018年提出的预训练语言模型，通过双向Transformer Encoder学习深层的语言表示。
+
+**核心特点：**
+- **双向上下文**：同时利用左右两侧的上下文信息
+- **预训练任务**：Masked Language Model (MLM) 和 Next Sentence Prediction (NSP)
+- **Fine-tuning范式**：预训练+微调的两阶段方法
+- **广泛应用**：在11个NLP任务上创造了新记录
+
+**创新点：**
+- 首次实现真正的双向预训练
+- [MASK]标记的掩码语言模型
+- 句子对分类任务设计
+- Segment Embeddings区分不同句子
+
+BERT开启了预训练语言模型的新时代，影响了后续众多模型的设计。`,
+                image: 'Transformer.png'
+            },
+            'ViT': {
+                title: 'Vision Transformer (ViT)',
+                subtitle: 'An Image is Worth 16x16 Words',
+                description: `ViT由Google在2020年提出，将Transformer架构成功应用于计算机视觉领域，证明了纯Transformer架构在图像分类上可以达到甚至超越CNN的性能。
+
+**核心创新：**
+- **图像分块**：将图像切分为固定大小的patches (16x16)
+- **线性投影**：将每个patch展平并映射到embedding空间
+- **位置编码**：为每个patch添加可学习的位置嵌入
+- **[CLS] token**：用于分类的特殊token
+
+**关键发现：**
+- 在大规模数据集上，ViT可以超越CNN
+- Transformer的归纳偏置更少，需要更多数据
+- 中层注意力可视化显示模型学习到全局关系
+
+ViT开启了视觉Transformer的新时代，影响了后续众多多模态模型的设计。`,
+                image: 'Transformer.png'
+            },
+            'CLIP': {
+                title: 'CLIP',
+                subtitle: 'Contrastive Language-Image Pre-training',
+                description: `CLIP由OpenAI在2021年提出，通过对比学习将图像和文本映射到同一个特征空间，实现了强大的零样本迁移能力。
+
+**核心思想：**
+- **对比学习**：最大化匹配图像-文本对的相似度，最小化不匹配对的相似度
+- **大规模预训练**：在4亿图像-文本对上训练
+- **双编码器架构**：图像编码器（ViT或ResNet）+ 文本编码器（Transformer）
+- **零样本推理**：无需微调即可完成各种视觉任务
+
+**应用场景：**
+- 零样本图像分类
+- 图像-文本检索
+- 多模态表示学习
+- 下游任务的强大特征提取器
+
+CLIP证明了大规模对比学习的有效性，成为多模态学习的重要基础。`,
+                image: 'Transformer.png'
+            },
+            'BLIP': {
+                title: 'BLIP',
+                subtitle: 'Bootstrapping Language-Image Pre-training',
+                description: `BLIP由Salesforce在2022年提出，通过引导式学习提升图像-文本预训练的效果，解决了网络数据噪声问题。
+
+**核心创新：**
+- **统一的视觉-语言理解和生成框架**
+- **Captioning and Filtering (CapFilt)**：自动生成高质量标注并过滤噪声数据
+- **多任务学习**：同时优化理解和生成任务
+- **模型架构**：图像编码器 + 文本编码器 + 图像-文本编码器 + 文本解码器
+
+**关键特性：**
+- 有效利用噪声网络数据
+- 在多个视觉-语言任务上达到SOTA
+- 支持图像描述生成、VQA、图像-文本检索等
+
+BLIP改进了预训练数据质量，提升了多模态模型的性能上限。`,
+                image: 'Transformer.png'
+            },
+            'BLIP2': {
+                title: 'BLIP-2',
+                subtitle: 'Bootstrapping Language-Image Pre-training with Frozen Models',
+                description: `BLIP-2是BLIP的升级版，通过冻结预训练模型并引入Q-Former来高效连接视觉和语言模态。
+
+**核心创新：**
+- **Q-Former查询机制**：使用可学习的query tokens提取视觉特征
+- **两阶段预训练**：
+  1. 视觉-语言表示学习
+  2. 视觉到语言的生成学习
+- **冻结模型策略**：冻结图像编码器和LLM，只训练Q-Former
+- **高效训练**：大幅减少可训练参数
+
+**技术优势：**
+- 参数效率高，训练成本低
+- 可以灵活组合不同的视觉模型和LLM
+- 在VQA、图像描述等任务上表现优异
+- 支持零样本图像到文本生成
+
+BLIP-2展示了如何高效利用已有的大模型构建强大的多模态系统。`,
+                image: 'Transformer.png'
+            },
+            'LLaVA': {
+                title: 'LLaVA',
+                subtitle: 'Large Language and Vision Assistant',
+                description: `LLaVA由微软和威斯康星大学在2023年提出，是一个端到端训练的多模态对话模型，将视觉编码器与大语言模型连接。
+
+**核心设计：**
+- **简单高效的架构**：CLIP视觉编码器 + 投影层 + Vicuna LLM
+- **指令微调数据**：使用GPT-4生成的高质量多模态指令数据
+- **端到端训练**：联合优化视觉和语言理解
+- **对话能力**：支持多轮视觉问答对话
+
+**关键特性：**
+- 强大的视觉理解和推理能力
+- 遵循复杂的多模态指令
+- 详细的图像描述生成
+- 视觉常识推理
+
+**训练策略：**
+- 预训练：对齐视觉特征和语言空间
+- 指令微调：提升对话和任务执行能力
+
+LLaVA展示了如何通过简单的架构和高质量数据构建强大的多模态助手。`,
+                image: 'Transformer.png'
+            }
+        };
+
+        function TransformerQuiz() {
+            const [selectedDifficulty, setSelectedDifficulty] = useState('全部');
+            const [selectedTopic, setSelectedTopic] = useState('全部');
+            const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+            const [userAnswers, setUserAnswers] = useState([]);
+            const [showFeedback, setShowFeedback] = useState(false);
+            const [isCorrect, setIsCorrect] = useState(false);
+            const [stats, setStats] = useState({ total: 0, correct: 0, attempted: 0 });
+            const [showResources, setShowResources] = useState(false);
+            const [showImage, setShowImage] = useState(false);
+            const [showFullCode, setShowFullCode] = useState(false);
+            const [wrongAnswerIds, setWrongAnswerIds] = useState(new Set());
+            const [showWrongAnswersOnly, setShowWrongAnswersOnly] = useState(false);
+            const [showTopicIntro, setShowTopicIntro] = useState(false); // 新增：控制专题介绍显示
+
+            const filteredQuestions = allQuestions.filter(q => {
+                // 先处理错题筛选
+                if (showWrongAnswersOnly && !wrongAnswerIds.has(q.id)) {
+                    return false;
+                }
+                // 再处理难度和主题筛选
+                const difficultyMatch = selectedDifficulty === '全部' || q.difficulty === selectedDifficulty;
+                const topicMatch = selectedTopic === '全部' || q.topic === selectedTopic;
+                return difficultyMatch && topicMatch;
+            }).sort((a, b) => {
+                // 手撕Transformer和进阶默写挑战专题按order排序
+                if ((a.topic === '手撕Transformer' || a.topic === '进阶默写挑战') && 
+                    (b.topic === '手撕Transformer' || b.topic === '进阶默写挑战') &&
+                    a.topic === b.topic) {
+                    return (a.order || 0) - (b.order || 0);
+                }
+                return 0;
+            });
+
+            const currentQuestion = filteredQuestions[currentQuestionIndex];
+
+            // 当筛选条件变化时重置
+            useEffect(() => {
+                setCurrentQuestionIndex(0);
+                setShowFeedback(false);
+                setShowFullCode(false);
+            }, [selectedDifficulty, selectedTopic, showWrongAnswersOnly]);
+
+            // 【修复bug】确保索引不越界（特别是在错题模式下答对题目后）
+            useEffect(() => {
+                if (filteredQuestions.length > 0 && currentQuestionIndex >= filteredQuestions.length) {
+                    setCurrentQuestionIndex(Math.max(0, filteredQuestions.length - 1));
+                }
+            }, [filteredQuestions.length, currentQuestionIndex]);
+
+            // 当题目变化时初始化答案数组
+            useEffect(() => {
+                if (currentQuestion) {
+                    if (currentQuestion.type === '选择' || currentQuestion.type === '多选') {
+                        setUserAnswers(currentQuestion.type === '多选' ? [] : [null]);
+                    } else if (currentQuestion.type === '提示') {
+                        setUserAnswers([]);  // 提示类型不需要答案
+                    } else if (currentQuestion.type === '代码' || currentQuestion.type === '代码默写') {
+                        const blankCount = (currentQuestion.code?.match(/\[blank\]/g) || []).length;
+                        setUserAnswers(new Array(blankCount).fill(''));
+                    }
+                }
+                setShowFeedback(false);
+                setShowFullCode(false);
+            }, [currentQuestionIndex]);
+
+            const handleAnswerChange = (index, value) => {
+                if (currentQuestion.type === '多选') {
+                    // 多选题：切换选项
+                    setUserAnswers(prev => {
+                        const newAnswers = [...prev];
+                        const optionIndex = newAnswers.indexOf(value);
+                        if (optionIndex > -1) {
+                            newAnswers.splice(optionIndex, 1);
+                        } else {
+                            newAnswers.push(value);
+                        }
+                        return newAnswers.sort((a, b) => a - b);
+                    });
+                } else {
+                    // 单选题和代码题
+                    setUserAnswers(prev => {
+                        const newAnswers = [...prev];
+                        newAnswers[index] = value;
+                        return newAnswers;
+                    });
+                }
+            };
+
+            const handleSubmit = () => {
+                if (!currentQuestion) return;
+
+                let correct = false;
+                
+                if (currentQuestion.type === '提示') {
+                    // 提示类型不需要验证，直接标记为正确
+                    correct = true;
+                } else if (currentQuestion.type === '代码默写' || currentQuestion.type === '简答' || currentQuestion.type === '填空') {
+                    // 代码默写、简答、填空题：不判断对错，直接显示答案供学习
+                    correct = true;  // 标记为正确，避免进入错题本
+                    setShowFeedback(true);  // 直接显示答案
+                    return;  // 不更新统计数据
+                } else if (currentQuestion.type === '选择') {
+                    correct = parseInt(userAnswers[0]) === currentQuestion.correct;
+                } else if (currentQuestion.type === '多选') {
+                    // 多选题：比较两个数组是否相等
+                    const userSelected = userAnswers.slice().sort((a, b) => a - b);
+                    const correctAnswers = currentQuestion.correct.slice().sort((a, b) => a - b);
+                    correct = userSelected.length === correctAnswers.length && 
+                              userSelected.every((val, idx) => val === correctAnswers[idx]);
+                } else if (currentQuestion.type === '代码') {
+                    const normalized = userAnswers.map(ans => ans.trim().toLowerCase());
+                    
+                    if (currentQuestion.acceptedAnswers) {
+                        correct = currentQuestion.acceptedAnswers.every((acceptedList, idx) => {
+                            return acceptedList.some(accepted => 
+                                normalized[idx] === accepted.toLowerCase()
+                            );
+                        });
+                    } else {
+                        correct = currentQuestion.answers.every((ans, idx) => 
+                            normalized[idx] === ans.toLowerCase()
+                        );
+                    }
+                }
+
+                setIsCorrect(correct);
+                setShowFeedback(true);
+                setStats(prev => ({
+                    total: prev.total,
+                    correct: prev.correct + (correct ? 1 : 0),
+                    attempted: prev.attempted + 1
+                }));
+
+                // 记录错题
+                if (!correct) {
+                    setWrongAnswerIds(prev => new Set([...prev, currentQuestion.id]));
+                } else {
+                    // 答对了就从错题集中移除
+                    setWrongAnswerIds(prev => {
+                        const newSet = new Set(prev);
+                        newSet.delete(currentQuestion.id);
+                        return newSet;
+                    });
+                }
+            };
+
+            const handleNext = () => {
+                if (currentQuestionIndex < filteredQuestions.length - 1) {
+                    // 【修复bug】在错题复习模式下，如果刚答对了题，索引不需要+1
+                    // 因为filteredQuestions已经变短，当前索引自然指向下一题
+                    if (showWrongAnswersOnly && isCorrect && showFeedback) {
+                        // 答对错题后，不增加索引（数组已变短，当前位置就是下一题）
+                        // 但需要重置状态
+                        setShowFeedback(false);
+                        setIsCorrect(false);
+                        setUserAnswers([]);
+                        setShowFullCode(false);
+                    } else {
+                        // 正常情况：索引+1，并重置所有状态
+                        setCurrentQuestionIndex(prev => prev + 1);
+                        setShowFeedback(false);
+                        setIsCorrect(false);
+                        setUserAnswers([]);
+                        setShowFullCode(false);
+                    }
+                } else if (showWrongAnswersOnly && isCorrect && showFeedback) {
+                    // 边界情况：答对了最后一道错题，只重置状态，保持在当前位置
+                    // 这样可以让用户看到"已完成所有错题"的提示
+                    setShowFeedback(false);
+                    setIsCorrect(false);
+                    setUserAnswers([]);
+                    setShowFullCode(false);
+                }
+            };
+
+            const handlePrevious = () => {
+                if (currentQuestionIndex > 0) {
+                    setCurrentQuestionIndex(prev => prev - 1);
+                    setShowFeedback(false);
+                    setIsCorrect(false);
+                    setUserAnswers([]);
+                    setShowFullCode(false);
+                }
+            };
+
+            const checkBlankCorrect = (index) => {
+                if (!currentQuestion.acceptedAnswers) {
+                    return userAnswers[index]?.trim().toLowerCase() === 
+                           currentQuestion.answers[index]?.toLowerCase();
+                }
+                const normalized = userAnswers[index]?.trim().toLowerCase();
+                return currentQuestion.acceptedAnswers[index]?.some(ans => 
+                    normalized === ans.toLowerCase()
+                );
+            };
+
+            const toggleWrongAnswers = () => {
+                setShowWrongAnswersOnly(!showWrongAnswersOnly);
+                setShowTopicIntro(false); // 切换错题模式时隐藏介绍页
+            };
+
+            const handleTopicChange = (topic) => {
+                setSelectedTopic(topic);
+                // 如果选择的不是"全部"，且该专题有介绍，则显示介绍页
+                if (topic !== '全部' && topicIntros[topic]) {
+                    setShowTopicIntro(true);
+                } else {
+                    setShowTopicIntro(false);
+                }
+            };
+
+            const startQuiz = () => {
+                setShowTopicIntro(false);
+            };
+
+            const renderCodeBlock = () => {
+                // 代码默写类型:可以切换查看完整代码
+                if (currentQuestion.type === '代码默写' && currentQuestion.fullCode) {
+                    if (showFullCode) {
+                        // 显示完整代码
+                        const highlightedCode = typeof Prism !== 'undefined' && Prism.languages.python
+                            ? Prism.highlight(currentQuestion.fullCode, Prism.languages.python, 'python')
+                            : currentQuestion.fullCode;
+                        
+                        return (
+                            <div className="code-block">
+                                <pre><code dangerouslySetInnerHTML={{ __html: highlightedCode }} /></pre>
+                            </div>
+                        );
+                    } else {
+                        // 默写模式：统一的代码编辑器样式
+                        const parts = currentQuestion.code.split('[blank]');
+                        
+                        return (
+                            <div className="unified-code-editor">
+                                <pre><code>
+                                    {parts.map((part, i) => (
+                                        <React.Fragment key={i}>
+                                            {/* 提示代码部分 - 使用语法高亮 */}
+                                            {part && (
+                                                <span dangerouslySetInnerHTML={{ 
+                                                    __html: typeof Prism !== 'undefined' && Prism.languages.python
+                                                        ? Prism.highlight(part, Prism.languages.python, 'python')
+                                                        : part 
+                                                }} />
+                                            )}
+                                            {/* 代码输入框 - 内联在代码中 */}
+                                            {i < parts.length - 1 && (
+                                                <>
+                                                    <span className="code-hint"># ✍️ 在下方补全代码 (空白 {i + 1})</span>
+                                                    {'\n'}
+                                                    <textarea
+                                                        className={`inline-code-input ${showFeedback ? (
+                                                            checkBlankCorrect(i) ? 'correct' : 'incorrect'
+                                                        ) : ''}`}
+                                                        value={userAnswers[i] ?? ''}
+                                                        onChange={(e) => handleAnswerChange(i, e.target.value)}
+                                                        disabled={showFeedback}
+                                                        placeholder="# 在这里输入你的代码..."
+                                                        spellCheck="false"
+                                                    />
+                                                    {'\n'}
+                                                </>
+                                            )}
+                                        </React.Fragment>
+                                    ))}
+                                </code></pre>
+                            </div>
+                        );
+                    }
+                }
+                
+                // 普通代码填空
+                const parts = currentQuestion.code.split('[blank]');
+                
+                return (
+                    <div className="code-block">
+                        <pre><code>
+                            {parts.map((part, i) => {
+                                // 手动应用Prism高亮
+                                const highlightedCode = typeof Prism !== 'undefined' && Prism.languages.python
+                                    ? Prism.highlight(part, Prism.languages.python, 'python')
+                                    : part;
+                                
+                                return (
+                                    <React.Fragment key={i}>
+                                        <span dangerouslySetInnerHTML={{ __html: highlightedCode }} />
+                                        {i < parts.length - 1 && (
+                                            <input
+                                                type="text"
+                                                className={`code-blank ${showFeedback ? (
+                                                    checkBlankCorrect(i) ? 'correct' : 'incorrect'
+                                                ) : ''}`}
+                                                value={userAnswers[i] ?? ''}
+                                                onChange={(e) => handleAnswerChange(i, e.target.value)}
+                                                disabled={showFeedback}
+                                                placeholder="..."
+                                                style={{ width: `${Math.max(120, ((userAnswers[i] ?? '').length || 1) * 10)}px` }}
+                                            />
+                                        )}
+                                    </React.Fragment>
+                                );
+                            })}
+                        </code></pre>
+                    </div>
+                );
+            };
+
+            // 不需要全局的Prism.highlightAll()，因为我们手动高亮了
+
+            if (!currentQuestion) {
+                return (
+                    <div className="container">
+                        <div className="header">
+                            <h1>🤖 Attention is All My Need</h1>
+                            <p>大模型 - 从理论到实践</p>
+                        </div>
+                        
+                        {/* 错题复习按钮 - 右上角固定位置 */}
+                        <button
+                            className={`wrong-answers-btn ${showWrongAnswersOnly ? 'active' : ''}`}
+                            onClick={toggleWrongAnswers}
+                            disabled={wrongAnswerIds.size === 0}
+                            title={wrongAnswerIds.size === 0 ? '暂无错题' : '点击查看错题'}
+                        >
+                            {showWrongAnswersOnly ? '✅ 返回全部' : '❌ 错题复习'}
+                            {wrongAnswerIds.size > 0 && (
+                                <span className="count-badge">{wrongAnswerIds.size}</span>
+                            )}
+                        </button>
+                        
+                        <div className="question-card">
+                            <div className="no-questions">
+                                {showWrongAnswersOnly ? (
+                                    <>
+                                        <div style={{ fontSize: '2em', marginBottom: '15px' }}>🎉</div>
+                                        <div style={{ fontSize: '1.2em', marginBottom: '10px', fontWeight: 'bold' }}>
+                                            恭喜！所有错题都已掌握
+                                        </div>
+                                        <div style={{ color: '#7f8c8d', marginBottom: '20px' }}>
+                                            你已经把所有错题都答对了，继续保持！
+                                        </div>
+                                        <button 
+                                            className="btn submit" 
+                                            onClick={() => setShowWrongAnswersOnly(false)}
+                                            style={{ marginTop: '10px' }}
+                                        >
+                                            返回题库继续练习
+                                        </button>
+                                    </>
+                                ) : (
+                                    '暂无符合筛选条件的题目，请调整筛选条件'
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            const progress = ((currentQuestionIndex + 1) / filteredQuestions.length) * 100;
+            const canSubmit = currentQuestion.type === '提示' ? 
+                true :  // 提示类型总是可以继续
+                currentQuestion.type === '代码默写' || currentQuestion.type === '简答' || currentQuestion.type === '填空' ?
+                true :  // 代码默写、问答题随时可以查看答案
+                currentQuestion.type === '选择' ? 
+                userAnswers[0] !== null && userAnswers[0] !== undefined : 
+                currentQuestion.type === '多选' ?
+                userAnswers.length > 0 :
+                userAnswers.every(ans => ans !== '');
+
+            return (
+                <div className="container">
+                    <div className="header">
+                        <h1>🤖 Transformer 深度学习</h1>
+                        <p>互动答题平台 - 从原理到实践</p>
+                    </div>
+
+                    <div className="stats">
+                        <div className="stat-item">
+                            <div className="stat-value">{stats.attempted}</div>
+                            <div className="stat-label">已答题数</div>
+                        </div>
+                        <div className="stat-item">
+                            <div className="stat-value">{stats.correct}</div>
+                            <div className="stat-label">正确数</div>
+                        </div>
+                        <div className="stat-item">
+                            <div className="stat-value">
+                                {stats.attempted > 0 ? Math.round((stats.correct / stats.attempted) * 100) : 0}%
+                            </div>
+                            <div className="stat-label">正确率</div>
+                        </div>
+                        <div className="stat-item">
+                            <div className="stat-value">{filteredQuestions.length}</div>
+                            <div className="stat-label">题库总数</div>
+                        </div>
+                    </div>
+
+                    <div className="controls">
+                        <div className="filter-group">
+                            <span className="filter-label">难度筛选：</span>
+                            <div className="btn-group">
+                                {['全部', '入门', '进阶', '挑战'].map(diff => (
+                                    <button
+                                        key={diff}
+                                        className={`btn ${selectedDifficulty === diff ? 'active' : ''}`}
+                                        onClick={() => setSelectedDifficulty(diff)}
+                                    >
+                                        {diff}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="filter-group">
+                            <span className="filter-label">专题筛选：</span>
+                            <div className="btn-group" style={{ marginBottom: '10px' }}>
+                                <button
+                                    className={`btn ${selectedTopic === '全部' ? 'active' : ''}`}
+                                    onClick={() => handleTopicChange('全部')}
+                                >
+                                    全部
+                                </button>
+                            </div>
+                            {/* NLP系列 */}
+                            <div className="topic-row">
+                                <span className="category-label">📝 NLP：</span>
+                                <div className="btn-group">
+                                    {['Transformer入门', 'Transformer进阶', '手撕Transformer', '进阶默写挑战', 'BERT'].map(topic => (
+                                        <button
+                                            key={topic}
+                                            className={`btn ${selectedTopic === topic ? 'active' : ''}`}
+                                            onClick={() => handleTopicChange(topic)}
+                                        >
+                                            {topic}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            {/* 多模态系列 */}
+                            <div className="topic-row">
+                                <span className="category-label">🎨 多模态：</span>
+                                <div className="btn-group">
+                                    {['ViT', 'CLIP', 'BLIP', 'BLIP2', 'LLaVA'].map(topic => (
+                                        <button
+                                            key={topic}
+                                            className={`btn ${selectedTopic === topic ? 'active' : ''}`}
+                                            onClick={() => handleTopicChange(topic)}
+                                        >
+                                            {topic}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            {/* 前置理论 */}
+                            <div className="topic-row">
+                                <span className="category-label">📚 前置理论：</span>
+                                <div className="btn-group">
+                                    <button
+                                        className={`btn ${selectedTopic === '经典机器学习' ? 'active' : ''}`}
+                                        onClick={() => handleTopicChange('经典机器学习')}
+                                    >
+                                        经典机器学习
+                                    </button>
+                                    <button
+                                        className={`btn ${selectedTopic === '深度学习基础' ? 'active' : ''}`}
+                                        onClick={() => handleTopicChange('深度学习基础')}
+                                    >
+                                        深度学习基础
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 错题复习按钮 - 右上角固定位置 */}
+                    <button
+                        className={`wrong-answers-btn ${showWrongAnswersOnly ? 'active' : ''}`}
+                        onClick={toggleWrongAnswers}
+                        disabled={wrongAnswerIds.size === 0}
+                        title={wrongAnswerIds.size === 0 ? '暂无错题' : '点击查看错题'}
+                    >
+                        {showWrongAnswersOnly ? '✅ 返回全部' : '❌ 错题复习'}
+                        {wrongAnswerIds.size > 0 && (
+                            <span className="count-badge">{wrongAnswerIds.size}</span>
+                        )}
+                    </button>
+
+                    {/* 专题介绍页 */}
+                    {showTopicIntro && topicIntros[selectedTopic] && (
+                        <div className="topic-intro">
+                            <div className="topic-intro-header">
+                                <h1 className="topic-intro-title">{topicIntros[selectedTopic].title}</h1>
+                                <p className="topic-intro-subtitle">{topicIntros[selectedTopic].subtitle}</p>
+                            </div>
+                            
+                            <div className="topic-intro-content">
+                                {topicIntros[selectedTopic].description.split('\n').map((paragraph, idx) => {
+                                    if (paragraph.trim()) {
+                                        // 处理加粗文本
+                                        if (paragraph.includes('**')) {
+                                            const parts = paragraph.split('**');
+                                            return (
+                                                <p key={idx}>
+                                                    {parts.map((part, i) => 
+                                                        i % 2 === 0 ? part : <strong key={i}>{part}</strong>
+                                                    )}
+                                                </p>
+                                            );
+                                        }
+                                        // 处理列表项
+                                        if (paragraph.trim().startsWith('-')) {
+                                            return null; // 列表项单独处理
+                                        }
+                                        return <p key={idx}>{paragraph}</p>;
+                                    }
+                                    return null;
+                                })}
+                                
+                                {/* 处理列表 */}
+                                {topicIntros[selectedTopic].description.includes('-') && (
+                                    <ul>
+                                        {topicIntros[selectedTopic].description.split('\n')
+                                            .filter(line => line.trim().startsWith('-'))
+                                            .map((item, idx) => {
+                                                const text = item.replace(/^-\s*/, '');
+                                                if (text.includes('**')) {
+                                                    const parts = text.split('**');
+                                                    return (
+                                                        <li key={idx}>
+                                                            {parts.map((part, i) => 
+                                                                i % 2 === 0 ? part : <strong key={i}>{part}</strong>
+                                                            )}
+                                                        </li>
+                                                    );
+                                                }
+                                                return <li key={idx}>{text}</li>;
+                                            })}
+                                    </ul>
+                                )}
+                            </div>
+
+                            {topicIntros[selectedTopic].image && (
+                                <div className="topic-intro-image">
+                                    <img src={topicIntros[selectedTopic].image} alt={`${topicIntros[selectedTopic].title} Architecture`} />
+                                </div>
+                            )}
+
+                            <div className="topic-intro-actions">
+                                <button className="start-quiz-btn" onClick={startQuiz}>
+                                    🚀 开始做题
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 手撕Transformer专题说明 */}
+                    {!showTopicIntro && selectedTopic === '手撕Transformer' && (
+                        <div style={{
+                            background: 'linear-gradient(135deg, #3498db 0%, #2980b9 100%)',
+                            borderRadius: '12px',
+                            padding: '20px',
+                            marginBottom: '20px',
+                            color: 'white',
+                            border: '1px solid #2980b9',
+                            boxShadow: '0 4px 6px rgba(52, 152, 219, 0.1)'
+                        }}>
+                            <div style={{ fontSize: '1.2em', fontWeight: '600', marginBottom: '8px' }}>
+                                🚀 手撕Transformer - 引导式实战
+                            </div>
+                            <div style={{ fontSize: '0.95em', lineHeight: '1.6', opacity: 0.95 }}>
+                                这是一个循序渐进的引导式学习专题，共14个步骤。你将从零开始，
+                                一步步实现完整的Transformer模型。每一题都有详细的知识点回顾。
+                                建议按顺序完成，也可以选择跳过熟悉的部分。
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 进阶默写挑战专题说明 */}
+                    {!showTopicIntro && selectedTopic === '进阶默写挑战' && (
+                        <div style={{
+                            background: 'linear-gradient(135deg, #e74c3c 0%, #c0392b 100%)',
+                            borderRadius: '12px',
+                            padding: '20px',
+                            marginBottom: '20px',
+                            color: 'white',
+                            border: '1px solid #c0392b',
+                            boxShadow: '0 4px 6px rgba(231, 76, 60, 0.1)'
+                        }}>
+                            <div style={{ fontSize: '1.2em', fontWeight: '600', marginBottom: '8px' }}>
+                                🔥 进阶默写挑战 - 真正的硬核
+                            </div>
+                            <div style={{ fontSize: '0.95em', lineHeight: '1.6', opacity: 0.95 }}>
+                                这是更困难的默写版本！只保留最关键的提示，大部分代码需要你自己写。
+                                点击"查看答案"可以切换到完整代码参考，再次点击切换回默写界面。
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 错题复习模式说明 */}
+                    {!showTopicIntro && showWrongAnswersOnly && (
+                        <div style={{
+                            background: 'linear-gradient(135deg, #e74c3c 0%, #c0392b 100%)',
+                            borderRadius: '12px',
+                            padding: '20px',
+                            marginBottom: '20px',
+                            color: 'white',
+                            border: '1px solid #c0392b',
+                            boxShadow: '0 4px 6px rgba(231, 76, 60, 0.1)'
+                        }}>
+                            <div style={{ fontSize: '1.2em', fontWeight: '600', marginBottom: '8px' }}>
+                                📝 错题复习模式
+                            </div>
+                            <div style={{ fontSize: '0.95em', lineHeight: '1.6', opacity: 0.95 }}>
+                                正在复习 {wrongAnswerIds.size} 道错题。答对后会自动从错题集中移除。加油，把这些题目都搞懂！💪
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 题目内容区域 - 只在不显示专题介绍时渲染 */}
+                    {!showTopicIntro && (
+                    <>
+                    <div className="progress-bar">
+                        <div className="progress-fill" style={{ width: `${progress}%` }}></div>
+                    </div>
+
+                    <div className="question-card">
+                        <div className="question-header">
+                            <div className="question-number">
+                                {currentQuestion.topic === '手撕Transformer' || currentQuestion.topic === '进阶默写挑战' ? (
+                                    <span>
+                                        Step {currentQuestion.order}/{filteredQuestions.length} 
+                                        <span style={{ color: '#95a5a6', fontSize: '0.8em', marginLeft: '8px' }}>
+                                            (第 {currentQuestionIndex + 1} 题)
+                                        </span>
+                                    </span>
+                                ) : (
+                                    `第 ${currentQuestionIndex + 1} / ${filteredQuestions.length} 题`
+                                )}
+                            </div>
+                            <div className="badges">
+                                {/* 题目类型标签 */}
+                                <span className="badge" style={{
+                                    background: currentQuestion.type === '代码默写' ? '#9b59b6' : 
+                                               (currentQuestion.type === '简答' || currentQuestion.type === '填空') ? '#3498db' : '#27ae60',
+                                    color: 'white',
+                                    fontWeight: '600'
+                                }}>
+                                    {currentQuestion.type === '代码默写' ? '💻 代码' :
+                                     currentQuestion.type === '简答' || currentQuestion.type === '填空' ? '📝 问答' :
+                                     currentQuestion.type === '多选' ? '☑️ 多选' : '✓ 选择'}
+                                </span>
+                                <span className={`badge difficulty-${currentQuestion.difficulty}`}>
+                                    {currentQuestion.difficulty}
+                                </span>
+                                <span className="badge topic">{currentQuestion.topic}</span>
+                            </div>
+                        </div>
+
+                        <div className="question-content">
+                            {currentQuestion.question}
+                        </div>
+
+                        {currentQuestion.code && renderCodeBlock()}
+
+                        {/* 提示类型：只显示内容，不需要答题 */}
+                        {currentQuestion.type === '提示' && (
+                            <div style={{
+                                background: 'white',
+                                padding: '24px',
+                                borderRadius: '8px',
+                                marginTop: '20px',
+                                color: '#2c3e50',
+                                border: '1px solid #e1e8ed'
+                            }}>
+                                <div 
+                                    style={{
+                                        fontSize: '0.95em',
+                                        lineHeight: '1.8'
+                                    }}
+                                    dangerouslySetInnerHTML={{ 
+                                        __html: marked.parse(currentQuestion.content || '') 
+                                    }}
+                                />
+                            </div>
+                        )}
+
+                        {(currentQuestion.type === '选择' || currentQuestion.type === '多选') && (
+                            <div className="options">
+                                {currentQuestion.options.map((option, index) => {
+                                    const isSelected = currentQuestion.type === '多选' ? 
+                                        userAnswers.includes(index) : 
+                                        userAnswers[0] === index;
+                                    const isCorrectOption = currentQuestion.type === '多选' ?
+                                        currentQuestion.correct.includes(index) :
+                                        index === currentQuestion.correct;
+                                    const isIncorrect = showFeedback && isSelected && !isCorrectOption;
+                                    
+                                    return (
+                                        <div
+                                            key={index}
+                                            className={`option ${isSelected ? 'selected' : ''} ${
+                                                showFeedback && isCorrectOption ? 'correct' : ''
+                                            } ${isIncorrect ? 'incorrect' : ''}`}
+                                            onClick={() => !showFeedback && handleAnswerChange(0, index)}
+                                        >
+                                            {currentQuestion.type === '多选' && (
+                                                <span style={{ marginRight: '8px' }}>
+                                                    {isSelected ? '☑' : '☐'}
+                                                </span>
+                                            )}
+                                            {option}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        {showFeedback && (
+                            <div className={`feedback ${(currentQuestion.type === '代码默写' || currentQuestion.type === '简答' || currentQuestion.type === '填空') ? 'correct' : (isCorrect ? 'correct' : 'incorrect')}`}>
+                                <div className="feedback-title">
+                                    {(currentQuestion.type === '代码默写' || currentQuestion.type === '简答' || currentQuestion.type === '填空') ? 
+                                        '📖 参考答案' : 
+                                        (isCorrect ? '✅ 回答正确！' : '❌ 回答错误')}
+                                </div>
+                                
+                                {/* 代码默写题显示参考答案 */}
+                                {currentQuestion.type === '代码默写' && (
+                                    <div style={{ 
+                                        background: 'rgba(255,255,255,0.5)', 
+                                        padding: '12px', 
+                                        borderRadius: '6px', 
+                                        marginBottom: '12px',
+                                        fontFamily: 'Consolas, Monaco, monospace',
+                                        fontSize: '0.9em'
+                                    }}>
+                                        <div style={{ fontWeight: '600', marginBottom: '8px', color: '#2c3e50' }}>
+                                            💡 参考实现：
+                                        </div>
+                                        {currentQuestion.answers && currentQuestion.answers.map((answer, idx) => (
+                                            <div key={idx} style={{ marginBottom: '6px', display: 'flex', alignItems: 'flex-start' }}>
+                                                <span style={{ 
+                                                    color: '#7f8c8d', 
+                                                    marginRight: '8px',
+                                                    minWidth: '60px',
+                                                    flexShrink: 0
+                                                }}>
+                                                    空白{idx + 1}:
+                                                </span>
+                                                <code style={{ 
+                                                    background: '#282c34', 
+                                                    color: '#61afef', 
+                                                    padding: '4px 8px', 
+                                                    borderRadius: '4px',
+                                                    fontWeight: '600',
+                                                    wordBreak: 'break-all'
+                                                }}>
+                                                    {answer}
+                                                </code>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                
+                                {/* 简答题和填空题显示标准答案 */}
+                                {(currentQuestion.type === '简答' || currentQuestion.type === '填空') && currentQuestion.answer && (
+                                    <div style={{ 
+                                        background: 'rgba(255,255,255,0.5)', 
+                                        padding: '12px', 
+                                        borderRadius: '6px', 
+                                        marginBottom: '12px',
+                                        fontSize: '0.95em',
+                                        lineHeight: '1.6'
+                                    }}>
+                                        <div style={{ fontWeight: '600', marginBottom: '8px', color: '#2c3e50' }}>
+                                            💡 标准答案：
+                                        </div>
+                                        <div style={{ color: '#2c3e50' }}>
+                                            {currentQuestion.answer}
+                                        </div>
+                                    </div>
+                                )}
+                                
+                                {/* 代码题显示正确答案 */}
+                                {currentQuestion.type === '代码' && !isCorrect && (
+                                    <div style={{ 
+                                        background: 'rgba(255,255,255,0.5)', 
+                                        padding: '12px', 
+                                        borderRadius: '6px', 
+                                        marginBottom: '12px',
+                                        fontFamily: 'Consolas, Monaco, monospace',
+                                        fontSize: '0.9em'
+                                    }}>
+                                        <div style={{ fontWeight: '600', marginBottom: '8px', color: '#2c3e50' }}>
+                                            💡 正确答案：
+                                        </div>
+                                        {currentQuestion.answers.map((answer, idx) => (
+                                            <div key={idx} style={{ marginBottom: '6px', display: 'flex', alignItems: 'center' }}>
+                                                <span style={{ 
+                                                    color: '#7f8c8d', 
+                                                    marginRight: '8px',
+                                                    minWidth: '60px'
+                                                }}>
+                                                    空白{idx + 1}:
+                                                </span>
+                                                <code style={{ 
+                                                    background: '#282c34', 
+                                                    color: '#61afef', 
+                                                    padding: '4px 8px', 
+                                                    borderRadius: '4px',
+                                                    fontWeight: '600'
+                                                }}>
+                                                    {answer}
+                                                </code>
+                                                {userAnswers[idx] && userAnswers[idx].trim() !== '' && (
+                                                    <span style={{ 
+                                                        marginLeft: '12px', 
+                                                        color: '#95a5a6',
+                                                        fontSize: '0.85em'
+                                                    }}>
+                                                        (你的答案: <code style={{ 
+                                                            background: '#fadbd8', 
+                                                            color: '#e74c3c',
+                                                            padding: '2px 6px',
+                                                            borderRadius: '3px'
+                                                        }}>{userAnswers[idx]}</code>)
+                                                    </span>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                
+                                <div 
+                                    className="explanation" 
+                                    dangerouslySetInnerHTML={{ 
+                                        __html: typeof marked !== 'undefined' 
+                                            ? marked.parse(currentQuestion.explanation) 
+                                            : currentQuestion.explanation 
+                                    }}
+                                />
+                            </div>
+                        )}
+
+                        <div className="action-buttons">
+                            {currentQuestionIndex > 0 && (
+                                <button className="btn" onClick={handlePrevious}>
+                                    ← 上一题
+                                </button>
+                            )}
+                            
+                            {/* 代码默写专属：查看答案按钮 */}
+                            {currentQuestion.type === '代码默写' && currentQuestion.fullCode && (
+                                <button 
+                                    className="btn" 
+                                    onClick={() => setShowFullCode(!showFullCode)}
+                                    style={{ 
+                                        background: showFullCode ? '#e74c3c' : '#f39c12',
+                                        color: 'white',
+                                        border: 'none'
+                                    }}
+                                >
+                                    {showFullCode ? '📝 返回默写' : '👁️ 查看答案'}
+                                </button>
+                            )}
+                            
+                            {!showFeedback ? (
+                                <>
+                                    <button 
+                                        className="btn submit" 
+                                        onClick={handleSubmit}
+                                        disabled={!canSubmit}
+                                    >
+                                        {currentQuestion.type === '代码默写' ? '👁️ 查看答案' :
+                                         (currentQuestion.type === '简答' || currentQuestion.type === '填空') ? '📖 阅读答案' :
+                                         '提交答案'}
+                                    </button>
+                                    {/* 跳过按钮 - 仅在手撕Transformer和进阶默写挑战专题显示 */}
+                                    {(currentQuestion.topic === '手撕Transformer' || currentQuestion.topic === '进阶默写挑战') && 
+                                     currentQuestionIndex < filteredQuestions.length - 1 && (
+                                        <button 
+                                            className="btn" 
+                                            onClick={handleNext}
+                                            style={{ 
+                                                background: '#95a5a6',
+                                                color: 'white',
+                                                border: 'none'
+                                            }}
+                                        >
+                                            跳过此题 →
+                                        </button>
+                                    )}
+                                </>
+                            ) : (
+                                <>
+                                    {currentQuestionIndex < filteredQuestions.length - 1 && (
+                                        <button className="btn next" onClick={handleNext}>
+                                            下一题 →
+                                        </button>
+                                    )}
+                                </>
+                            )}
+                        </div>
+                    </div>
+                    </>
+                    )}
+
+                    {/* 架构图按钮 */}
+                    <button 
+                        className="image-button" 
+                        onClick={() => setShowImage(true)}
+                        title="Transformer架构图"
+                    >
+                        🖼️
+                    </button>
+
+                    {/* 资源链接按钮 */}
+                    <button 
+                        className="resource-button" 
+                        onClick={() => setShowResources(true)}
+                        title="学习资源"
+                    >
+                        📚
+                    </button>
+
+                    {/* 架构图模态框 */}
+                    {showImage && (
+                        <div className="image-modal" onClick={() => setShowImage(false)}>
+                            <div className="image-modal-content" onClick={(e) => e.stopPropagation()}>
+                                <button className="close-image-modal" onClick={() => setShowImage(false)}>
+                                    ×
+                                </button>
+                                <img src="Transformer.png" alt="Transformer Architecture" />
+                                <div className="image-title">Transformer 架构图</div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 资源链接模态框 */}
+                    {showResources && (
+                        <div className="resource-modal" onClick={() => setShowResources(false)}>
+                            <div className="resource-content" onClick={(e) => e.stopPropagation()}>
+                                <button className="close-modal" onClick={() => setShowResources(false)}>
+                                    ×
+                                </button>
+                                
+                                <h2>📚 Transformer 学习资源</h2>
+                                
+                                <div className="resource-section">
+                                    <h3>📄 经典论文</h3>
+                                    {resources.papers.map((paper, index) => (
+                                        <a 
+                                            key={index} 
+                                            href={paper.url} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="resource-link"
+                                        >
+                                            <span className="resource-link-title">{paper.title}</span>
+                                            <span className="resource-link-desc">{paper.desc}</span>
+                                        </a>
+                                    ))}
+                                </div>
+
+                                <div className="resource-section">
+                                    <h3>💻 代码仓库</h3>
+                                    {resources.repos.map((repo, index) => (
+                                        <a 
+                                            key={index} 
+                                            href={repo.url} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="resource-link"
+                                        >
+                                            <span className="resource-link-title">{repo.title}</span>
+                                            <span className="resource-link-desc">{repo.desc}</span>
+                                        </a>
+                                    ))}
+                                </div>
+
+                                <div className="resource-section">
+                                    <h3>🎓 教程与课程</h3>
+                                    {resources.tutorials.map((tutorial, index) => (
+                                        <a 
+                                            key={index} 
+                                            href={tutorial.url} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="resource-link"
+                                        >
+                                            <span className="resource-link-title">{tutorial.title}</span>
+                                            <span className="resource-link-desc">{tutorial.desc}</span>
+                                        </a>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        ReactDOM.render(<TransformerQuiz />, document.getElementById('root'));
+    </script>
+</body>
+</html>
