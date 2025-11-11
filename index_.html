@@ -11,6 +11,18 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" />
+    
+    <!-- MathJax支持 -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$']],
+                displayMath: [['$$', '$$']]
+            }
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
     <script src="questions.js"></script>
     <style>
         * {
@@ -768,22 +780,22 @@
             width: 56px;
             height: 56px;
             border-radius: 50%;
-            background: #2980b9;
+            background: #f39c12;
             color: white;
             border: none;
             cursor: pointer;
-            box-shadow: 0 4px 12px rgba(41, 128, 185, 0.3);
+            box-shadow: 0 4px 12px rgba(243, 156, 18, 0.4);
             font-size: 1.5em;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.2s;
+            transition: all 0.3s;
             z-index: 1000;
         }
 
         .image-button:hover {
-            transform: scale(1.05);
-            box-shadow: 0 6px 16px rgba(41, 128, 185, 0.4);
+            transform: scale(1.1) rotate(15deg);
+            box-shadow: 0 6px 20px rgba(243, 156, 18, 0.6);
         }
 
         .image-modal {
@@ -1234,23 +1246,6 @@ Transformer开启了NLP领域的新时代，成为BERT、GPT等现代大语言�
 - 理解模型训练的细节`,
                 image: 'Transformer.png'
             },
-            '进阶默写挑战': {
-                title: '进阶默写挑战',
-                subtitle: '挑战你的代码记忆力',
-                description: `通过代码默写巩固Transformer实现细节，挑战更复杂的代码片段。
-
-**挑战内容：**
-- 完整的Self-Attention实现
-- 多头注意力的矩阵运算
-- Encoder Layer的完整代码
-- 位置编码的生成逻辑
-
-**提升技能：**
-- 强化代码记忆和理解
-- 提高面试代码能力
-- 深度掌握实现细节`,
-                image: 'Transformer.png'
-            },
             'BERT': {
                 title: 'BERT',
                 subtitle: 'Bidirectional Encoder Representations from Transformers',
@@ -1386,11 +1381,11 @@ LLaVA展示了如何通过简单的架构和高质量数据构建强大的多模
             const [isCorrect, setIsCorrect] = useState(false);
             const [stats, setStats] = useState({ total: 0, correct: 0, attempted: 0 });
             const [showResources, setShowResources] = useState(false);
-            const [showImage, setShowImage] = useState(false);
             const [showFullCode, setShowFullCode] = useState(false);
             const [wrongAnswerIds, setWrongAnswerIds] = useState(new Set());
             const [showWrongAnswersOnly, setShowWrongAnswersOnly] = useState(false);
             const [showTopicIntro, setShowTopicIntro] = useState(false); // 新增：控制专题介绍显示
+            const [shuffledOrder, setShuffledOrder] = useState(null); // 新增：保存打乱后的题目顺序
 
             const filteredQuestions = allQuestions.filter(q => {
                 // 先处理错题筛选
@@ -1401,31 +1396,54 @@ LLaVA展示了如何通过简单的架构和高质量数据构建强大的多模
                 const difficultyMatch = selectedDifficulty === '全部' || q.difficulty === selectedDifficulty;
                 const topicMatch = selectedTopic === '全部' || q.topic === selectedTopic;
                 return difficultyMatch && topicMatch;
-            }).sort((a, b) => {
-                // 手撕Transformer和进阶默写挑战专题按order排序
-                if ((a.topic === '手撕Transformer' || a.topic === '进阶默写挑战') && 
-                    (b.topic === '手撕Transformer' || b.topic === '进阶默写挑战') &&
-                    a.topic === b.topic) {
-                    return (a.order || 0) - (b.order || 0);
-                }
-                return 0;
             });
+            
+            // 根据专题和打乱状态显示题目
+            const displayQuestions = (() => {
+                // 手撕Transformer专题始终按order排序，不打乱
+                if (selectedTopic === '手撕Transformer') {
+                    return filteredQuestions.sort((a, b) => (a.order || 0) - (b.order || 0));
+                }
+                
+                // 如果有打乱顺序，按打乱顺序排列
+                if (shuffledOrder) {
+                    const orderMap = new Map(shuffledOrder.map((id, index) => [id, index]));
+                    return filteredQuestions.sort((a, b) => {
+                        const orderA = orderMap.get(a.id);
+                        const orderB = orderMap.get(b.id);
+                        // 如果在打乱顺序中，按顺序排列；否则保持原顺序
+                        if (orderA !== undefined && orderB !== undefined) {
+                            return orderA - orderB;
+                        }
+                        return 0;
+                    });
+                }
+                
+                // 默认：手撕Transformer按order排序，其他题目保持原顺序
+                return filteredQuestions.sort((a, b) => {
+                    if (a.topic === '手撕Transformer' && b.topic === '手撕Transformer') {
+                        return (a.order || 0) - (b.order || 0);
+                    }
+                    return 0;
+                });
+            })();
 
-            const currentQuestion = filteredQuestions[currentQuestionIndex];
+            const currentQuestion = displayQuestions[currentQuestionIndex];
 
             // 当筛选条件变化时重置
             useEffect(() => {
                 setCurrentQuestionIndex(0);
                 setShowFeedback(false);
                 setShowFullCode(false);
+                setShuffledOrder(null); // 清除打乱顺序
             }, [selectedDifficulty, selectedTopic, showWrongAnswersOnly]);
 
             // 【修复bug】确保索引不越界（特别是在错题模式下答对题目后）
             useEffect(() => {
-                if (filteredQuestions.length > 0 && currentQuestionIndex >= filteredQuestions.length) {
-                    setCurrentQuestionIndex(Math.max(0, filteredQuestions.length - 1));
+                if (displayQuestions.length > 0 && currentQuestionIndex >= displayQuestions.length) {
+                    setCurrentQuestionIndex(Math.max(0, displayQuestions.length - 1));
                 }
-            }, [filteredQuestions.length, currentQuestionIndex]);
+            }, [displayQuestions.length, currentQuestionIndex]);
 
             // 当题目变化时初始化答案数组
             useEffect(() => {
@@ -1525,7 +1543,7 @@ LLaVA展示了如何通过简单的架构和高质量数据构建强大的多模
             };
 
             const handleNext = () => {
-                if (currentQuestionIndex < filteredQuestions.length - 1) {
+                if (currentQuestionIndex < displayQuestions.length - 1) {
                     // 【修复bug】在错题复习模式下，如果刚答对了题，索引不需要+1
                     // 因为filteredQuestions已经变短，当前索引自然指向下一题
                     if (showWrongAnswersOnly && isCorrect && showFeedback) {
@@ -1561,6 +1579,39 @@ LLaVA展示了如何通过简单的架构和高质量数据构建强大的多模
                     setUserAnswers([]);
                     setShowFullCode(false);
                 }
+            };
+
+            // 打乱题目顺序
+            const handleShuffle = () => {
+                // 手撕Transformer专题不打乱
+                if (selectedTopic === '手撕Transformer') {
+                    return;
+                }
+                
+                // Fisher-Yates洗牌算法
+                const ids = filteredQuestions.map(q => q.id);
+                const shuffled = [...ids];
+                for (let i = shuffled.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+                }
+                
+                setShuffledOrder(shuffled);
+                setCurrentQuestionIndex(0); // 重置到第一题
+                setShowFeedback(false);
+                setIsCorrect(false);
+                setUserAnswers([]);
+                setShowFullCode(false);
+            };
+
+            // 恢复顺序
+            const handleResetOrder = () => {
+                setShuffledOrder(null);
+                setCurrentQuestionIndex(0);
+                setShowFeedback(false);
+                setIsCorrect(false);
+                setUserAnswers([]);
+                setShowFullCode(false);
             };
 
             const checkBlankCorrect = (index) => {
@@ -1737,7 +1788,7 @@ LLaVA展示了如何通过简单的架构和高质量数据构建强大的多模
                 );
             }
 
-            const progress = ((currentQuestionIndex + 1) / filteredQuestions.length) * 100;
+            const progress = ((currentQuestionIndex + 1) / displayQuestions.length) * 100;
             const canSubmit = currentQuestion.type === '提示' ? 
                 true :  // 提示类型总是可以继续
                 currentQuestion.type === '代码默写' || currentQuestion.type === '简答' || currentQuestion.type === '填空' ?
@@ -1771,7 +1822,7 @@ LLaVA展示了如何通过简单的架构和高质量数据构建强大的多模
                             <div className="stat-label">正确率</div>
                         </div>
                         <div className="stat-item">
-                            <div className="stat-value">{filteredQuestions.length}</div>
+                            <div className="stat-value">{displayQuestions.length}</div>
                             <div className="stat-label">题库总数</div>
                         </div>
                     </div>
@@ -1805,7 +1856,7 @@ LLaVA展示了如何通过简单的架构和高质量数据构建强大的多模
                             <div className="topic-row">
                                 <span className="category-label">📝 NLP：</span>
                                 <div className="btn-group">
-                                    {['Transformer入门', 'Transformer进阶', '手撕Transformer', '进阶默写挑战', 'BERT'].map(topic => (
+                                    {['Transformer入门', 'Transformer进阶', '手撕Transformer', 'BERT'].map(topic => (
                                         <button
                                             key={topic}
                                             className={`btn ${selectedTopic === topic ? 'active' : ''}`}
@@ -1847,6 +1898,21 @@ LLaVA展示了如何通过简单的架构和高质量数据构建强大的多模
                                     >
                                         深度学习基础
                                     </button>
+                                </div>
+                            </div>
+                            {/* 强化学习 */}
+                            <div className="topic-row">
+                                <span className="category-label">🎮 强化学习：</span>
+                                <div className="btn-group">
+                                    {['Bandits', 'PG', 'Q-Learning', '策略优化', '人类对齐'].map(topic => (
+                                        <button
+                                            key={topic}
+                                            className={`btn ${selectedTopic === topic ? 'active' : ''}`}
+                                            onClick={() => handleTopicChange(topic)}
+                                        >
+                                            {topic}
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
                         </div>
@@ -1955,27 +2021,6 @@ LLaVA展示了如何通过简单的架构和高质量数据构建强大的多模
                         </div>
                     )}
 
-                    {/* 进阶默写挑战专题说明 */}
-                    {!showTopicIntro && selectedTopic === '进阶默写挑战' && (
-                        <div style={{
-                            background: 'linear-gradient(135deg, #e74c3c 0%, #c0392b 100%)',
-                            borderRadius: '12px',
-                            padding: '20px',
-                            marginBottom: '20px',
-                            color: 'white',
-                            border: '1px solid #c0392b',
-                            boxShadow: '0 4px 6px rgba(231, 76, 60, 0.1)'
-                        }}>
-                            <div style={{ fontSize: '1.2em', fontWeight: '600', marginBottom: '8px' }}>
-                                🔥 进阶默写挑战 - 真正的硬核
-                            </div>
-                            <div style={{ fontSize: '0.95em', lineHeight: '1.6', opacity: 0.95 }}>
-                                这是更困难的默写版本！只保留最关键的提示，大部分代码需要你自己写。
-                                点击"查看答案"可以切换到完整代码参考，再次点击切换回默写界面。
-                            </div>
-                        </div>
-                    )}
-
                     {/* 错题复习模式说明 */}
                     {!showTopicIntro && showWrongAnswersOnly && (
                         <div style={{
@@ -2006,15 +2051,15 @@ LLaVA展示了如何通过简单的架构和高质量数据构建强大的多模
                     <div className="question-card">
                         <div className="question-header">
                             <div className="question-number">
-                                {currentQuestion.topic === '手撕Transformer' || currentQuestion.topic === '进阶默写挑战' ? (
+                                {currentQuestion.topic === '手撕Transformer' ? (
                                     <span>
-                                        Step {currentQuestion.order}/{filteredQuestions.length} 
+                                        Step {currentQuestion.order}/{displayQuestions.filter(q => q.topic === '手撕Transformer').length} 
                                         <span style={{ color: '#95a5a6', fontSize: '0.8em', marginLeft: '8px' }}>
                                             (第 {currentQuestionIndex + 1} 题)
                                         </span>
                                     </span>
                                 ) : (
-                                    `第 ${currentQuestionIndex + 1} / ${filteredQuestions.length} 题`
+                                    `第 ${currentQuestionIndex + 1} / ${displayQuestions.length} 题`
                                 )}
                             </div>
                             <div className="badges">
@@ -2254,9 +2299,9 @@ LLaVA展示了如何通过简单的架构和高质量数据构建强大的多模
                                          (currentQuestion.type === '简答' || currentQuestion.type === '填空') ? '📖 阅读答案' :
                                          '提交答案'}
                                     </button>
-                                    {/* 跳过按钮 - 仅在手撕Transformer和进阶默写挑战专题显示 */}
-                                    {(currentQuestion.topic === '手撕Transformer' || currentQuestion.topic === '进阶默写挑战') && 
-                                     currentQuestionIndex < filteredQuestions.length - 1 && (
+                                    {/* 跳过按钮 - 仅在手撕Transformer专题显示 */}
+                                    {currentQuestion.topic === '手撕Transformer' && 
+                                     currentQuestionIndex < displayQuestions.length - 1 && (
                                         <button 
                                             className="btn" 
                                             onClick={handleNext}
@@ -2272,7 +2317,7 @@ LLaVA展示了如何通过简单的架构和高质量数据构建强大的多模
                                 </>
                             ) : (
                                 <>
-                                    {currentQuestionIndex < filteredQuestions.length - 1 && (
+                                    {currentQuestionIndex < displayQuestions.length - 1 && (
                                         <button className="btn next" onClick={handleNext}>
                                             下一题 →
                                         </button>
@@ -2284,14 +2329,19 @@ LLaVA展示了如何通过简单的架构和高质量数据构建强大的多模
                     </>
                     )}
 
-                    {/* 架构图按钮 */}
-                    <button 
-                        className="image-button" 
-                        onClick={() => setShowImage(true)}
-                        title="Transformer架构图"
-                    >
-                        🖼️
-                    </button>
+                    {/* 打乱/恢复按钮 - 仅对非"手撕Transformer"专题显示 */}
+                    {selectedTopic !== '手撕Transformer' && (
+                        <button 
+                            className="image-button" 
+                            onClick={shuffledOrder ? handleResetOrder : handleShuffle}
+                            title={shuffledOrder ? "恢复顺序" : "打乱题目"}
+                            style={{
+                                background: shuffledOrder ? '#e67e22' : '#f39c12'
+                            }}
+                        >
+                            {shuffledOrder ? '📋' : '🔀'}
+                        </button>
+                    )}
 
                     {/* 资源链接按钮 */}
                     <button 
@@ -2301,19 +2351,6 @@ LLaVA展示了如何通过简单的架构和高质量数据构建强大的多模
                     >
                         📚
                     </button>
-
-                    {/* 架构图模态框 */}
-                    {showImage && (
-                        <div className="image-modal" onClick={() => setShowImage(false)}>
-                            <div className="image-modal-content" onClick={(e) => e.stopPropagation()}>
-                                <button className="close-image-modal" onClick={() => setShowImage(false)}>
-                                    ×
-                                </button>
-                                <img src="Transformer.png" alt="Transformer Architecture" />
-                                <div className="image-title">Transformer 架构图</div>
-                            </div>
-                        </div>
-                    )}
 
                     {/* 资源链接模态框 */}
                     {showResources && (
